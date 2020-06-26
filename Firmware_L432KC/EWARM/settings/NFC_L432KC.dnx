@@ -20,7 +20,7 @@
         <LeaveTargetRunning>_ 0</LeaveTargetRunning>
     </StLinkDriver>
     <DebugChecksum>
-        <Checksum>4044499995</Checksum>
+        <Checksum>1060518286</Checksum>
     </DebugChecksum>
     <Exceptions>
         <StopOnUncaught>_ 0</StopOnUncaught>
@@ -127,7 +127,7 @@
         <mode>0</mode>
     </DisassembleMode>
     <Breakpoints2>
-        <Bp0>_ 1 "EMUL_CODE" "{$PROJ_DIR$\..\UserCode\src\SSD1306.c}.194.18" 0 0 1 "" 0 "" 0</Bp0>
+        <Bp0>_ 1 "EMUL_CODE" "{$PROJ_DIR$\..\UserCode\src\SSD1306.c}.235.18" 0 0 1 "" 0 "" 0</Bp0>
         <Count>1</Count>
     </Breakpoints2>
     <Aliases>

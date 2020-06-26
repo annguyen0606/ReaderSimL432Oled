@@ -54,6 +54,7 @@ int main (void)
     MX_USART1_UART_Init();
     //HAL_Delay(5000);
     WakeUp_CR95HF();
+    DWT_Delay_Init();
     OLED_init();
     ssd1306_clear_screen(0x00);
     HAL_Delay(50);
@@ -106,7 +107,8 @@ int main (void)
     }    
     ssd1306_clear_screen(0x00);
     ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-    ssd1306_display_string(62, 8, "Conek", 16, 1);
+    ssd1306_display_string(62, 2, "Conek", 16, 1);
+    ssd1306_display_string(50, 25, "Welcome", 16, 1);
     ssd1306_refresh_gram();
     HAL_Delay(1000);
     permissReadTag=0;
@@ -245,13 +247,11 @@ int main (void)
               ssd1306_clear_screen(0x00);
               ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
               ssd1306_display_string(62, 2, "Conek", 16, 1);
-              ssd1306_display_string(32, 17, idTagBCD , 12, 1);
-              ssd1306_display_string(45, 27, "Nhap Tien: " , 12, 1);            
-              ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);                
-              ssd1306_display_string(60, 47, "Sending...", 12, 1);
+              ssd1306_display_string(45, 25, "Sending...", 16, 1);
               ssd1306_refresh_gram();
               if(Sim_sendCommand("AT+SAPBR=1,1","ERROR",10000)){
-              
+                ssd1306_display_string(50, 40, ".", 16, 1);
+                ssd1306_refresh_gram();
               } 
               display((char *)url);
               for(uint8_t abc = 0; abc < 16; abc++){
@@ -259,24 +259,27 @@ int main (void)
               }
               display("&time=");
               display((char *)So_Tien_Pay);
-                permissReadTag = 0;
+              permissReadTag = 0;
                 if(Sim_sendCommand("\"","OK",10000))
                 {
+                  ssd1306_display_string(55, 40, ".", 16, 1);
+                  ssd1306_refresh_gram();
                   HAL_Delay(10);
                   if(Sim_sendCommand("AT+HTTPPARA=\"CID\",1","OK",10000))
                   {
+                    ssd1306_display_string(60, 40, ".", 16, 1);
+                    ssd1306_refresh_gram();
                     HAL_Delay(10);
                     if(Sim_sendCommand("AT+HTTPACTION=0","OK",10000))
                     {
+                      ssd1306_display_string(65, 40, ".", 16, 1);
+                      ssd1306_refresh_gram();
                       if(Sim_Response("200",10000))
                       {     
                         ssd1306_clear_screen(0x00);
                         ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
                         ssd1306_display_string(62, 2, "Conek", 16, 1);
-                        ssd1306_display_string(32, 17, idTagBCD , 12, 1);
-                        ssd1306_display_string(45, 27, "Nhap Tien: " , 12, 1);            
-                        ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                        ssd1306_display_string(60, 47, "Success", 12, 1);
+                        ssd1306_display_string(50, 25, "Success", 16, 1);
                         ssd1306_refresh_gram();                
                       }
                       else
@@ -284,10 +287,7 @@ int main (void)
                         ssd1306_clear_screen(0x00);
                         ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
                         ssd1306_display_string(62, 2, "Conek", 16, 1);
-                        ssd1306_display_string(32, 17, idTagBCD , 12, 1);
-                        ssd1306_display_string(45, 27, "Nhap Tien: " , 12, 1);            
-                        ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                        ssd1306_display_string(45, 47, "Sorry, Fail", 12, 1);
+                        ssd1306_display_string(50, 25, "Sorry, Fail", 16, 1);
                         ssd1306_refresh_gram();                
                       }
                     }
@@ -296,19 +296,17 @@ int main (void)
                         ssd1306_clear_screen(0x00);
                         ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
                         ssd1306_display_string(62, 2, "Conek", 16, 1);
-                        ssd1306_display_string(32, 17, idTagBCD , 12, 1);
-                        ssd1306_display_string(45, 32, "Nhap Tien: " , 12, 1);
-                        ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                        ssd1306_display_string(45, 47, "Sorry, Fail", 12, 1);
+                        ssd1306_display_string(50, 25, "Sorry, Fail", 16, 1);
                         ssd1306_refresh_gram();                
                     }
                   }
                 }
               HAL_Delay(500);
-                        ssd1306_clear_screen(0x00);
-                        ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-                        ssd1306_display_string(62, 2, "Conek", 16, 1);
-                        ssd1306_refresh_gram();               
+              ssd1306_clear_screen(0x00);
+              ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
+              ssd1306_display_string(62, 2, "Conek", 16, 1);
+              ssd1306_display_string(50, 25, "Welcome", 16, 1);
+              ssd1306_refresh_gram();               
               for(uint8_t abc = 0; abc < 20; abc++){
                 So_Tien_Pay[abc] = 0;
                 idTagBCD[abc] = 0;

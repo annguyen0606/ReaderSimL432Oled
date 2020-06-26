@@ -40,6 +40,46 @@ static uint8_t s_chDispalyBuffer[128][8];
   *                           1: Writes to the display data ram
   * @retval None
 **/
+uint32_t DWT_Delay_Init(void) {
+  /* Disable TRC */
+  CoreDebug->DEMCR &= ~CoreDebug_DEMCR_TRCENA_Msk; // ~0x01000000;
+  /* Enable TRC */
+  CoreDebug->DEMCR |=  CoreDebug_DEMCR_TRCENA_Msk; // 0x01000000;
+
+  /* Disable clock cycle counter */
+  DWT->CTRL &= ~DWT_CTRL_CYCCNTENA_Msk; //~0x00000001;
+  /* Enable  clock cycle counter */
+  DWT->CTRL |=  DWT_CTRL_CYCCNTENA_Msk; //0x00000001;
+
+  /* Reset the clock cycle counter value */
+  DWT->CYCCNT = 0;
+
+     /* 3 NO OPERATION instructions */
+     __ASM volatile ("NOP");
+     __ASM volatile ("NOP");
+  __ASM volatile ("NOP");
+
+  /* Check if clock cycle counter has started */
+     if(DWT->CYCCNT)
+     {
+       return 0; /*clock cycle counter started*/
+     }
+     else
+  {
+    return 1; /*clock cycle counter not started*/
+  }
+}
+void DWT_Delay_us(volatile uint32_t microseconds)
+{
+  uint32_t clk_cycle_start = DWT->CYCCNT;
+ 
+  /* Go to number of cycles for system */
+  microseconds *= (HAL_RCC_GetHCLKFreq() / 1000000);
+ 
+  /* Delay till end */
+  while ((DWT->CYCCNT - clk_cycle_start) < microseconds);
+}
+/* Use DWT_Delay_Init (); and DWT_Delay_us (microseconds) in the main */
 static void ssd1306_write_byte(uint8_t chData, uint8_t chCmd) 
 {
         uint8_t data_t[2];
@@ -50,6 +90,7 @@ static void ssd1306_write_byte(uint8_t chData, uint8_t chCmd)
 	}
         data_t[1] = chData;  //en=0, rs=0
         HAL_I2C_Master_Transmit (&hi2c1, 0x78,(uint8_t *) data_t, 2, 100);
+        DWT_Delay_us(1);
 }   	  
 
 /**
@@ -336,75 +377,65 @@ void ssd1306_draw_bitmap(uint8_t chXpos, uint8_t chYpos, const uint8_t *pchBmp, 
     }
 }
 
-
-
-/**
-  * @brief  SSd1306 initialization
-  *         
-  * @param  None
-  *         
-  * @retval None
-**/
 void ssd1306_init(void)
 {
-
-
 	ssd1306_write_byte(0xAE, SSD1306_CMD);//--turn off oled panel
-        HAL_Delay(1);
+       // DWT_Delay(1);
+        //HAL_Delay(1);
 	ssd1306_write_byte(0x00, SSD1306_CMD);//---set low column address
-        HAL_Delay(1);
+        //HAL_Delay(1);
 	ssd1306_write_byte(0x10, SSD1306_CMD);//---set high column address
-        HAL_Delay(1);
+        //HAL_Delay(1);
 	ssd1306_write_byte(0x40, SSD1306_CMD);//--set start line address  Set Mapping RAM Display Start Line (0x00~0x3F)
-        HAL_Delay(1);
+        //HAL_Delay(1);
 	ssd1306_write_byte(0x81, SSD1306_CMD);//--set contrast control register
-        HAL_Delay(1);
+        //HAL_Delay(1);
 	ssd1306_write_byte(0xCF, SSD1306_CMD);// Set SEG Output Current Brightness
-        HAL_Delay(1);
+        //HAL_Delay(1);
 	ssd1306_write_byte(0xA1, SSD1306_CMD);//--Set SEG/Column Mapping     
-        HAL_Delay(1);
+  //      HAL_Delay(1);
 	ssd1306_write_byte(0xC0, SSD1306_CMD);//Set COM/Row Scan Direction   
-        HAL_Delay(1);
+  //      HAL_Delay(1);
 	ssd1306_write_byte(0xA6, SSD1306_CMD);//--set normal display
-        HAL_Delay(1);
+  //      HAL_Delay(1);
 	ssd1306_write_byte(0xA8, SSD1306_CMD);//--set multiplex ratio(1 to 64)
-        HAL_Delay(1);
+   //     HAL_Delay(1);
 	ssd1306_write_byte(0x3f, SSD1306_CMD);//--1/64 duty
-        HAL_Delay(1);
+    //    HAL_Delay(1);
 	ssd1306_write_byte(0xD3, SSD1306_CMD);//-set display offset	Shift Mapping RAM Counter (0x00~0x3F)
-        HAL_Delay(1);
+    //    HAL_Delay(1);
 	ssd1306_write_byte(0x00, SSD1306_CMD);//-not offset
-        HAL_Delay(1);
+    //    HAL_Delay(1);
 	ssd1306_write_byte(0xd5, SSD1306_CMD);//--set display clock divide ratio/oscillator frequency
-        HAL_Delay(1);
+     //   HAL_Delay(1);
 	ssd1306_write_byte(0x80, SSD1306_CMD);//--set divide ratio, Set Clock as 100 Frames/Sec
-        HAL_Delay(1);
+      //  HAL_Delay(1);
 	ssd1306_write_byte(0xD9, SSD1306_CMD);//--set pre-charge period
-        HAL_Delay(1);
+      //  HAL_Delay(1);
 	ssd1306_write_byte(0xF1, SSD1306_CMD);//Set Pre-Charge as 15 Clocks & Discharge as 1 Clock
-        HAL_Delay(1);
+     //   HAL_Delay(1);
 	ssd1306_write_byte(0xDA, SSD1306_CMD);//--set com pins hardware configuration
-        HAL_Delay(1);
+     //   HAL_Delay(1);
 	ssd1306_write_byte(0x12, SSD1306_CMD);
-        HAL_Delay(1);
+     //   HAL_Delay(1);
 	ssd1306_write_byte(0xDB, SSD1306_CMD);//--set vcomh
-        HAL_Delay(1);
+    //    HAL_Delay(1);
 	ssd1306_write_byte(0x40, SSD1306_CMD);//Set VCOM Deselect Level
-        HAL_Delay(1);
+    //    HAL_Delay(1);
 	ssd1306_write_byte(0x20, SSD1306_CMD);//-Set Page Addressing Mode (0x00/0x01/0x02)
-        HAL_Delay(1);
+    //    HAL_Delay(1);
 	ssd1306_write_byte(0x02, SSD1306_CMD);//
-        HAL_Delay(1);
+      //  HAL_Delay(1);
 	ssd1306_write_byte(0x8D, SSD1306_CMD);//--set Charge Pump enable/disable
-        HAL_Delay(1);
+     //   HAL_Delay(1);
 	ssd1306_write_byte(0x14, SSD1306_CMD);//--set(0x10) disable
-        HAL_Delay(1);
+    //    HAL_Delay(1);
 	ssd1306_write_byte(0xA4, SSD1306_CMD);// Disable Entire Display On (0xa4/0xa5)
-        HAL_Delay(1);
+    //    HAL_Delay(1);
 	ssd1306_write_byte(0xA6, SSD1306_CMD);// Disable Inverse Display On (0xa6/a7) 
-        HAL_Delay(1);
+    //    HAL_Delay(1);
 	ssd1306_write_byte(0xAF, SSD1306_CMD);//--turn on oled panel
-	HAL_Delay(1);
+	//HAL_Delay(1);
 	ssd1306_clear_screen(0x00);
 }
 

@@ -24,7 +24,7 @@ extern void ssd1306_display_string(uint8_t chXpos, uint8_t chYpos, const uint8_t
 extern void ssd1306_draw_1616char(uint8_t chXpos, uint8_t chYpos, uint8_t chChar);
 extern void ssd1306_draw_3216char(uint8_t chXpos, uint8_t chYpos, uint8_t chChar);
 extern void ssd1306_draw_bitmap(uint8_t chXpos, uint8_t chYpos, const uint8_t *pchBmp, uint8_t chWidth, uint8_t chHeight);
-
+extern uint32_t DWT_Delay_Init(void);
 extern void ssd1306_init(void);
 
 #endif
