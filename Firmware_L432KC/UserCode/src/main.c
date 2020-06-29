@@ -11,7 +11,7 @@ I2C_HandleTypeDef hi2c1;
 #ifdef USE_TINZ
     SPI_HandleTypeDef spi_to_nfcm1833tinz;
 #endif
-
+#define KEYPAD_NO_PRESSED			0xFF
 UART_HandleTypeDef huart1;
 static void MX_USART1_UART_Init(void);
 static void MX_I2C1_Init(void);
@@ -41,6 +41,66 @@ int8_t Sim_Response(char*response,uint32_t timeout);
 uint8_t permissReadTag = 0;
 uint8_t So_Tien_Pay[16];
 uint8_t viTriTien = 0;
+uint8_t So_Bill[16];
+uint8_t viTriBill = 0;
+uint8_t getKey(void);
+#define Col1_GPIO_Port          GPIOB
+#define Col1_Pin                GPIO_PIN_3
+#define Col2_GPIO_Port          GPIOA
+#define Col2_Pin                GPIO_PIN_11
+#define Col3_GPIO_Port          GPIOB
+#define Col3_Pin                GPIO_PIN_0
+
+uint8_t getKey(void) {
+  HAL_GPIO_WritePin(Col1_GPIO_Port, Col1_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(Col2_GPIO_Port, Col2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(Col3_GPIO_Port, Col3_Pin, GPIO_PIN_RESET);
+
+  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_3)==1){
+    return 1;
+  }
+  if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)==1){
+    return 4;
+  }
+  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0)==1){
+    return 7;
+  }
+  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_8)==1){
+    return 42;
+  }
+  HAL_GPIO_WritePin(Col1_GPIO_Port, Col1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(Col2_GPIO_Port, Col2_Pin, GPIO_PIN_SET);
+  HAL_GPIO_WritePin(Col3_GPIO_Port, Col3_Pin, GPIO_PIN_RESET);
+  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_3)==1){
+    return 2;
+  }
+  if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)==1){
+    return 5;
+  }
+  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0)==1){
+    return 8;
+  }
+  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_8)==1){
+    return 0;
+  }  
+  HAL_GPIO_WritePin(Col1_GPIO_Port, Col1_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(Col2_GPIO_Port, Col2_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(Col3_GPIO_Port, Col3_Pin, GPIO_PIN_SET);
+  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_3)==1){
+    return 3;
+  }
+  if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)==1){
+    return 6;
+  }
+  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0)==1){
+    return 9;
+  }
+  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_8)==1){
+    return 35;
+  }
+  return KEYPAD_NO_PRESSED;  
+}
+
 int main (void)
 {
     uint8_t count = 0;
@@ -52,7 +112,7 @@ int main (void)
     MX_I2C1_Init();
     MX_SPI1_Init();
     MX_USART1_UART_Init();
-    //HAL_Delay(5000);
+    HAL_Delay(5000);
     WakeUp_CR95HF();
     DWT_Delay_Init();
     OLED_init();
@@ -112,6 +172,8 @@ int main (void)
     ssd1306_refresh_gram();
     HAL_Delay(1000);
     permissReadTag=0;
+    uint8_t key;
+        
     while (1)
     {  
           char url[100] = "AT+HTTPPARA=\"URL\",\"http://testcodeesp8266.000webhostapp.com/receiver.php?UID=";
@@ -132,132 +194,86 @@ int main (void)
                 ssd1306_clear_screen(0x00);
                 ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
                 ssd1306_display_string(62, 2, "Conek", 16, 1);
-                ssd1306_display_string(32, 17, idTagBCD , 12, 1);
-                ssd1306_display_string(45, 27, "Nhap Tien: " , 12, 1);
+                ssd1306_display_string(45, 17, "Nhap Tien: " , 12, 1);
                 ssd1306_refresh_gram();
                 permissReadTag = 1;  
                 HAL_Delay(500);
               }            
               break;
             case 1:
-              if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_3)==0)
-              {
-                HAL_Delay(100);
-                viTriTien++;    
-                So_Tien_Pay[viTriTien - 1] = 0x30;
-                ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                ssd1306_refresh_gram();
-              }
-              if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_0)==0)
-              {
-                HAL_Delay(100);
-                viTriTien++;
-                So_Tien_Pay[viTriTien - 1] = 0x31; 
-                ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                ssd1306_refresh_gram();
-              }        
-              if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)==0)
-              {
-                HAL_Delay(100);
-                viTriTien++;
-                So_Tien_Pay[viTriTien - 1] = 0x32; 
-                ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                ssd1306_refresh_gram();
-              }        
-              if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_8)==0)
-              {
-                HAL_Delay(100);
-                viTriTien++;
-                So_Tien_Pay[viTriTien - 1] = 0x33; 
-                ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                ssd1306_refresh_gram();
-              }        
-              if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_11)==0)
-              {
-                HAL_Delay(100);
-                viTriTien++;
-                So_Tien_Pay[viTriTien - 1] = 0x34; 
-                ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                ssd1306_refresh_gram();
-              }        
-              if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_12)==0)
-              {
-                HAL_Delay(100);
-                viTriTien++;
-                So_Tien_Pay[viTriTien - 1] = 0x35;
-                ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                ssd1306_refresh_gram();
-              }        
-              if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_3)==0)
-              {
-                HAL_Delay(100);
-                viTriTien++;
-                So_Tien_Pay[viTriTien - 1] = 0x36;
-                ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                ssd1306_refresh_gram();
-              }
-              if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_4)==0)
-              {
-                HAL_Delay(100);
-                viTriTien++;
-                So_Tien_Pay[viTriTien - 1] = 0x37;
-                ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                ssd1306_refresh_gram();
-              }        
-              if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_5)==0)
-              {
-                HAL_Delay(100);
-                viTriTien++;
-                So_Tien_Pay[viTriTien - 1] = 0x38; 
-                ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                ssd1306_refresh_gram();
-              }        
-              if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_2)==0)
-              {
-                HAL_Delay(100);
-                viTriTien++;
-                So_Tien_Pay[viTriTien - 1] = 0x39;
-                ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                ssd1306_refresh_gram();
-              }        
-              if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0)==0)
-              {
-                permissReadTag = 2;
-                HAL_Delay(200);
-              }         
-              if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_1)==0)
-              {
-                So_Tien_Pay[viTriTien - 1] = 0;
-                if(viTriTien > 0){
-                  viTriTien--;
-                }else{
-                  viTriTien = 0;
+              key = getKey();
+              if (key != KEYPAD_NO_PRESSED) { 
+                if (key != 35 && key != 42) {
+                  viTriTien++;
+                  So_Tien_Pay[viTriTien - 1] = 0x30 + key;
+                  ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
+                  ssd1306_refresh_gram();
+                }else if (key == 42) {
+                  So_Tien_Pay[viTriTien - 1] = 0;
+                  if(viTriTien > 0){
+                    viTriTien--;
+                  }else{
+                    viTriTien = 0;
+                  }
+                  ssd1306_clear_screen(0x00);
+                  ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
+                  ssd1306_display_string(62, 2, "Conek", 16, 1);
+                  ssd1306_display_string(45, 17, "Nhap Tien: " , 12, 1);            
+                  ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
+                  ssd1306_refresh_gram();
+                }else if (key == 35) {
+                  permissReadTag = 2;
+                  HAL_Delay(50);
+                  ssd1306_clear_screen(0x00);
+                  HAL_Delay(50);
+                  ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
+                  ssd1306_display_string(62, 2, "Conek", 16, 1);
+                  ssd1306_display_string(45, 17, "Nhap Bill: " , 12, 1);            
+                  ssd1306_refresh_gram();                  
                 }
-                ssd1306_clear_screen(0x00);
-                ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-                ssd1306_display_string(62, 2, "Conek", 16, 1);
-                ssd1306_display_string(32, 17, idTagBCD , 12, 1);
-                ssd1306_display_string(45, 27, "Nhap Tien: " , 12, 1);            
-                ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                ssd1306_refresh_gram();
-                HAL_Delay(300);
-              }                       
+              }
+              HAL_Delay(120);                       
               break;
-            default:
-              ssd1306_clear_screen(0x00);
-              ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-              ssd1306_display_string(62, 2, "Conek", 16, 1);
-              ssd1306_display_string(45, 25, "Sending...", 16, 1);
-              ssd1306_refresh_gram();
-              if(Sim_sendCommand("AT+SAPBR=1,1","ERROR",10000)){
-                ssd1306_display_string(50, 40, ".", 16, 1);
-                ssd1306_refresh_gram();
-              } 
+          case 2:
+              key = getKey();
+              if (key != KEYPAD_NO_PRESSED) { 
+                if (key != 35 && key != 42) {
+                  viTriBill++;
+                  So_Bill[viTriBill - 1] = 0x30 + key;
+                  ssd1306_display_string(45, 37, So_Bill, 12, 1);
+                  ssd1306_refresh_gram();
+                }else if (key == 42) {
+                  So_Bill[viTriBill - 1] = 0;
+                  if(viTriBill > 0){
+                    viTriBill--;
+                  }else{
+                    viTriBill = 0;
+                  }
+                  ssd1306_clear_screen(0x00);
+                  ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
+                  ssd1306_display_string(62, 2, "Conek", 16, 1);
+                  ssd1306_display_string(45, 17, "Nhap Bill: " , 12, 1);            
+                  ssd1306_display_string(45, 37, So_Bill, 12, 1);
+                  ssd1306_refresh_gram();
+                }else if (key == 35) {
+                  permissReadTag = 3;
+                  ssd1306_clear_screen(0x00);
+                  ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
+                  ssd1306_display_string(62, 2, "Conek", 16, 1);
+                  ssd1306_display_string(45, 25, "Sending...", 16, 1);
+                  ssd1306_refresh_gram();                  
+                }
+              }
+              HAL_Delay(120);              
+              break;
+          default: 
               display((char *)url);
               for(uint8_t abc = 0; abc < 16; abc++){
                 HAL_UART_Transmit(&huart1,&idTagBCD[abc],1,1000);
               }
-              display("&time=");
+              display("&bill=");
+              display((char*)So_Bill);
+              display("&money=");
               display((char *)So_Tien_Pay);
               permissReadTag = 0;
                 if(Sim_sendCommand("\"","OK",10000))
@@ -309,58 +325,16 @@ int main (void)
               ssd1306_refresh_gram();               
               for(uint8_t abc = 0; abc < 20; abc++){
                 So_Tien_Pay[abc] = 0;
+                So_Bill[abc] = 0;
                 idTagBCD[abc] = 0;
               }
               viTriTien = 0;
+              viTriBill = 0;
               break;
           }
     }
  
 }
-//void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
-//{
-//  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_0)==1)
-//  {
-//    permissReadTag = 2;
-//  }
-//}
-//void LCD_Dislay_Clear()
-//{
-//  lcd_clear_display();
-//  HAL_Delay (100);
-//  lcd_goto_XY(1,5);
-//  lcd_send_string("Conek");  
-//}
-//void LCD_Display(char* str)
-//{
-//  lcd_clear_display();
-//  HAL_Delay (100);
-//  lcd_goto_XY(1,3);
-//  lcd_send_string("Nhap Tien:");                     
-//  lcd_goto_XY(2,4);
-//  lcd_send_string(str);          
-//  HAL_Delay(300);  
-//}
-//void LCD_Display_Success()
-//{
-//  lcd_clear_display();
-//  HAL_Delay (100);
-//  lcd_goto_XY(1,5);
-//  lcd_send_string("Conek"); 
-//  lcd_goto_XY(2,2);
-//  lcd_send_string("Send Success");
-//  HAL_Delay(1000);  
-//}
-//void LCD_Display_Faild()
-//{
-//  lcd_clear_display();
-//  HAL_Delay (100);
-//  lcd_goto_XY(1,5);
-//  lcd_send_string("Conek"); 
-//  lcd_goto_XY(2,2);
-//  lcd_send_string("Send Failed");
-//  HAL_Delay(1000);
-//}
 void display(char* data)																								
 {
 	HAL_UART_Transmit(&huart1,(uint8_t *)data,(uint16_t)strlen(data),1000);
@@ -640,30 +614,26 @@ static void MX_GPIO_Init (void)
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOH_CLK_ENABLE();
     
-    /*Configure GPIO pin : PA0 */
-//    GPIO_InitStruct.Pin = GPIO_PIN_0;
-//    GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
-//    GPIO_InitStruct.Pull = GPIO_NOPULL;
-//    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
-    
-    /*Configure GPIO pins : PA3 PA8 PA11 PA12 */
-    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_2|GPIO_PIN_3|GPIO_PIN_8|GPIO_PIN_11|GPIO_PIN_12
-                          ;
+    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_3|GPIO_PIN_8;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);    
+    GPIO_InitStruct.Pin = GPIO_PIN_1;
+    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+    GPIO_InitStruct.Pull = GPIO_PULLDOWN;
+    HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);        
     
     /*Configure GPIO pins : PB0 PB1 PB3 PB4 
                              PB5 */
-    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_3|GPIO_PIN_4 
-                            |GPIO_PIN_5;
-    GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-    GPIO_InitStruct.Pull = GPIO_NOPULL;
+    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_3;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
     
-    /* EXTI interrupt init*/
-//    HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-//    HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+    GPIO_InitStruct.Pin = GPIO_PIN_11;
+    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+    GPIO_InitStruct.Pull = GPIO_PULLUP;
+    HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);    
 }
 static void MX_USART1_UART_Init(void)
 {
