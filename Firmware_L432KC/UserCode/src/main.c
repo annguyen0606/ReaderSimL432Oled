@@ -36,7 +36,11 @@ void deleteBuffer(char* buf);
 uint8_t dataReceive = 0;
 char Sim_response[500] = {0};
 char Sim_Rxdata[2] = {0};
+char Sim_Rxdata1[500] = {0};
+char IMEI_SIM[500] = {0};
+char IMEI_SIM_REAL[16] = {0};
 int8_t Sim_sendCommand(char*command ,char*response,uint32_t timeout);
+int8_t Sim_sendCommand_IMEI(char*command);
 int8_t Sim_Response(char*response,uint32_t timeout);
 uint8_t permissReadTag = 0;
 uint8_t So_Tien_Pay[16];
@@ -44,6 +48,7 @@ uint8_t viTriTien = 0;
 uint8_t So_Bill[16];
 uint8_t viTriBill = 0;
 uint8_t getKey(void);
+
 #define Col1_GPIO_Port          GPIOB
 #define Col1_Pin                GPIO_PIN_3
 #define Col2_GPIO_Port          GPIOA
@@ -98,6 +103,7 @@ uint8_t getKey(void) {
   if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_8)==1){
     return 35;
   }
+  
   return KEYPAD_NO_PRESSED;  
 }
 
@@ -106,24 +112,21 @@ int main (void)
     uint8_t count = 0;
     HAL_Init();
     SystemClock_Config();
-    
     MX_GPIO_Init();
     MX_CRC_Init();
     MX_I2C1_Init();
     MX_SPI1_Init();
     MX_USART1_UART_Init();
-    HAL_Delay(5000);
     WakeUp_CR95HF();
     DWT_Delay_Init();
     OLED_init();
     ssd1306_clear_screen(0x00);
     HAL_Delay(50);
-    ssd1306_clear_screen(0x00);
-    HAL_Delay(50);
     ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
     HAL_Delay(50);
     ssd1306_display_string(50, 8, "Conek", 16, 1);
-    HAL_Delay(50);
+    ssd1306_refresh_gram();
+    HAL_Delay(10000);
     ssd1306_display_string(40, 23, "Connecting", 12, 1);
     HAL_Delay(50);
     //ssd1306_refresh_gram();
@@ -131,6 +134,13 @@ int main (void)
     HAL_Delay(50);
     ssd1306_refresh_gram();
     int a = 0;
+//    if(Sim_sendCommand("ATE1","OK",10000)){
+//    }
+    //HAL_Delay(10);
+    if(Sim_sendCommand_IMEI("AT+CGSN")){
+      HAL_Delay(10);
+    }
+
     while(a < 1)
     {
       if(Sim_sendCommand("AT","OK",10000))
@@ -165,10 +175,14 @@ int main (void)
         }
       }  
     }    
+    for(uint8_t i = 0; i < 15; i++){
+      IMEI_SIM_REAL[i] = IMEI_SIM[i + 11] - 0x30;
+    }
     ssd1306_clear_screen(0x00);
     ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
     ssd1306_display_string(62, 2, "Conek", 16, 1);
     ssd1306_display_string(50, 25, "Welcome", 16, 1);
+    //ssd1306_display_string(45, 35, (uint8_t *)IMEI_SIM_REAL, 12, 1);
     ssd1306_refresh_gram();
     HAL_Delay(1000);
     permissReadTag=0;
@@ -275,6 +289,8 @@ int main (void)
               display((char*)So_Bill);
               display("&money=");
               display((char *)So_Tien_Pay);
+              display("&imei=");
+              display(IMEI_SIM_REAL);
               permissReadTag = 0;
                 if(Sim_sendCommand("\"","OK",10000))
                 {
@@ -323,11 +339,8 @@ int main (void)
               ssd1306_display_string(62, 2, "Conek", 16, 1);
               ssd1306_display_string(50, 25, "Welcome", 16, 1);
               ssd1306_refresh_gram();               
-              for(uint8_t abc = 0; abc < 20; abc++){
-                So_Tien_Pay[abc] = 0;
-                So_Bill[abc] = 0;
-                idTagBCD[abc] = 0;
-              }
+              deleteBuffer((char *)So_Bill);
+              deleteBuffer((char *)So_Tien_Pay);
               viTriTien = 0;
               viTriBill = 0;
               break;
@@ -390,8 +403,7 @@ int8_t Sim_sendCommand(char*command ,char*response,uint32_t timeout)
       }
     }
   }
-  while(answer == 0);
-  //display(Sim_response);
+  while(answer == 0); 
   return answer;
 }
 
@@ -440,6 +452,28 @@ int8_t Sim_Response(char*response,uint32_t timeout)
   //display(Sim_response);
   return answer;
 }
+int8_t Sim_sendCommand_IMEI(char*command)
+{
+  uint8_t answer = 0, count  = 0;
+  deleteBuffer(IMEI_SIM);
+  HAL_UART_Transmit(&huart1, (uint8_t *)command, (uint16_t)strlen(command), 1000);
+  HAL_UART_Transmit(&huart1,(uint8_t *)"\r\n",(uint16_t)strlen("\r\n"),1000);
+  do
+  {
+      if(HAL_UART_Receive(&huart1, (uint8_t *)Sim_Rxdata1, 1, 2000) == HAL_OK)
+      {
+        IMEI_SIM[count] = Sim_Rxdata1[0] + 0x30;
+        count++;
+      }    
+    
+  }
+  while(count <= 30);
+  while(HAL_UART_Receive(&huart1, (uint8_t *)Sim_Rxdata1, 1, 2000) == HAL_OK){}
+  //ssd1306_display_string(40, 35,(uint8_t *)IMEI_SIM, 12, 1);
+  //ssd1306_refresh_gram();    
+  return answer;
+}
+
 /**
   * @brief System Clock Configuration
   * @retval None
