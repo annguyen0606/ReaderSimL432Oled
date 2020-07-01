@@ -48,6 +48,8 @@ uint8_t viTriTien = 0;
 uint8_t So_Bill[16];
 uint8_t viTriBill = 0;
 uint8_t getKey(void);
+void DisplaySendText(uint8_t x, uint8_t y, char * TextSend, uint8_t sizeText);
+uint8_t KhoiDongSim();
 
 #define Col1_GPIO_Port          GPIOB
 #define Col1_Pin                GPIO_PIN_3
@@ -56,6 +58,231 @@ uint8_t getKey(void);
 #define Col3_GPIO_Port          GPIOB
 #define Col3_Pin                GPIO_PIN_0
 
+int main (void)
+{
+    uint8_t count = 0;
+    HAL_Init();
+    SystemClock_Config();
+    MX_GPIO_Init();
+    MX_CRC_Init();
+    MX_I2C1_Init();
+    MX_SPI1_Init();
+    MX_USART1_UART_Init();
+    WakeUp_CR95HF();
+    DWT_Delay_Init();
+    OLED_init();
+    
+    ssd1306_clear_screen(0x00);
+    ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
+    ssd1306_display_string(50, 8, "Conek", 16, 1);
+    ssd1306_refresh_gram();
+    
+    HAL_Delay(8000);
+    ssd1306_display_string(40, 23, "Connecting", 12, 1);
+    ssd1306_display_string(55, 35, ".", 16, 1);
+    ssd1306_refresh_gram();
+//    if(Sim_sendCommand("ATE1","OK",10000)){
+//    }
+    //HAL_Delay(10);
+    if(Sim_sendCommand_IMEI("AT+CGSN")){
+      
+    }
+    HAL_Delay(10);
+    uint8_t a = KhoiDongSim();
+    while(a < 1){
+        DisplaySendText(25,42,"Start Failed",12);
+    }
+    
+    for(uint8_t i = 0; i < 15; i++){
+      IMEI_SIM_REAL[i] = IMEI_SIM[i + 11] - 0x30;
+    }
+    DisplaySendText(25,50,"Welcome",16);
+    permissReadTag=0;
+    uint8_t key;
+        
+    while (1)
+    {  
+          uint8_t countSend = 0;
+          
+          switch(permissReadTag)
+          {
+          case 0:
+              if ( (ping_module() == PING_OK) && (select_tag_type (TYPE_5) == PROTOCOL_OK) && (getDeviceID (idTag) == SEND_RECV_OK))
+              {
+                idTag[7] = 0x00;
+                if (encode8byte_little_edian (idTag, idTagBCD) == 0)
+                {
+                  for (count = 0; count < ID_TAG_SIZE * 2; count++)
+                  {
+                    idTagBCD[count] += 0x30;
+                  }
+                } 
+                __HAL_SPI_DISABLE(&spi_to_nfcm1833tinz); 
+                DisplaySendText(17,55,"Nhap Tien",12);
+                permissReadTag = 1;  
+                HAL_Delay(500);
+              }            
+              break;
+            case 1:
+              key = getKey();
+              if (key != KEYPAD_NO_PRESSED) { 
+                if (key != 35 && key != 42) {
+                  viTriTien++;
+                  So_Tien_Pay[viTriTien - 1] = 0x30 + key;
+                  ssd1306_display_string(45, 40, So_Tien_Pay, 12, 1);
+                  ssd1306_refresh_gram();
+                }else if (key == 42) {
+                  So_Tien_Pay[viTriTien - 1] = 0;
+                  if(viTriTien > 0){
+                    viTriTien--;
+                  }else{
+                    viTriTien = 0;
+                  }
+                  DisplaySendText(17,55,"Nhap Tien",12);
+                  ssd1306_display_string(45, 40, So_Tien_Pay, 12, 1);
+                  ssd1306_refresh_gram();
+                }else if (key == 35) {
+                  permissReadTag = 2;
+                  DisplaySendText(17,55,"Nhap Bill",12);
+                }
+              }
+              HAL_Delay(110);                       
+              break;
+          case 2:
+              key = getKey();
+              if (key != KEYPAD_NO_PRESSED) { 
+                if (key != 35 && key != 42) {
+                  viTriBill++;
+                  So_Bill[viTriBill - 1] = 0x30 + key;
+                  ssd1306_display_string(45, 40, So_Bill, 12, 1);
+                  ssd1306_refresh_gram();
+                }else if (key == 42) {
+                  So_Bill[viTriBill - 1] = 0;
+                  if(viTriBill > 0){
+                    viTriBill--;
+                  }else{
+                    viTriBill = 0;
+                  }
+                  DisplaySendText(17,55,"Nhap Bill",12);            
+                  ssd1306_display_string(45, 40, So_Bill, 12, 1);
+                  ssd1306_refresh_gram();
+                }else if (key == 35) {
+                  permissReadTag = 3;
+                  DisplaySendText(25,45,"Sending...",16);
+                }
+              }
+              HAL_Delay(110);              
+              break;
+          default:
+            while(countSend < 5)
+            {
+              if(Sim_sendCommand("AT+SAPBR=1,1","ERROR",10000)){
+              
+              }else{
+                
+              }
+              char url[100] = "AT+HTTPPARA=\"URL\",\"http://testcodeesp8266.000webhostapp.com/receiver.php?UID=";
+              countSend++;
+              display((char *)url);
+              for(uint8_t abc = 0; abc < 16; abc++){
+                HAL_UART_Transmit(&huart1,&idTagBCD[abc],1,1000);
+              }
+              display("&bill=");
+              display((char*)So_Bill);
+              display("&money=");
+              display((char *)So_Tien_Pay);
+              display("&imei=");
+              display(IMEI_SIM_REAL);  
+              if(Sim_sendCommand("\"","OK",10000)){
+                ssd1306_display_string(55, 40, ".", 16, 1);
+                ssd1306_refresh_gram();
+                HAL_Delay(10);
+                if(Sim_sendCommand("AT+HTTPACTION=0","OK",10000)){
+                  if(Sim_Response("200",10000)){
+                    DisplaySendText(25,50,"Success",16);
+                    countSend = 0;
+                    break;
+                  }
+                }
+              }
+            }
+            HAL_Delay(500);
+            if(countSend > 0){
+              DisplaySendText(25,47,"Re-Check",16); 
+              HAL_Delay(2000);
+            }
+            DisplaySendText(25,50,"Welcome",16); 
+            deleteBuffer((char *)So_Bill);
+            deleteBuffer((char *)So_Tien_Pay);
+            viTriTien = 0;
+            viTriBill = 0;   
+            permissReadTag = 0;
+            break;
+          }
+    }
+ 
+}
+uint8_t KhoiDongSim(){
+      ssd1306_clear_screen(0x00);
+      ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
+      ssd1306_display_string(50, 8, "Conek", 16, 1);
+      ssd1306_display_string(40, 23, "Connecting", 12, 1);
+      ssd1306_display_string(55, 35, ".", 16, 1);
+      ssd1306_refresh_gram();
+      if(Sim_sendCommand("AT","OK",10000))
+      {
+        ssd1306_display_string(60, 35, ".", 16, 1);
+        ssd1306_refresh_gram();
+        HAL_Delay(10);
+        if(Sim_sendCommand("AT+SAPBR=3,1,\"Contype\",\"GPRS\"","OK",10000))
+        {
+          ssd1306_display_string(65, 35, ".", 16, 1);
+          ssd1306_refresh_gram();
+          HAL_Delay(10);        
+          if(Sim_sendCommand("AT+SAPBR=3,1,\"APN\",\"e-connect\"","OK",10000))		
+          {
+            ssd1306_display_string(70, 35, ".", 16, 1);
+            ssd1306_refresh_gram();
+            HAL_Delay(10);           
+            if(Sim_sendCommand("AT+SAPBR=1,1","OK",10000))
+            {
+              ssd1306_display_string(75, 35, ".", 16, 1);
+              ssd1306_refresh_gram();
+              HAL_Delay(10);             
+              if(Sim_sendCommand("AT+HTTPINIT","OK",10000))
+              {
+                ssd1306_display_string(80, 35, ".", 16, 1);
+                ssd1306_refresh_gram();
+                HAL_Delay(10);                          
+                return 1;
+              }else{
+                return 0;
+              }
+            }else{
+              return 0;
+            }
+          }else{
+            return 0;
+          }
+        }else{
+          return 0;
+        }
+      }else{
+        return 0;
+      }
+      
+}
+void DisplaySendText(uint8_t x, uint8_t y, char * TextSend, uint8_t sizeText)
+{
+  /*
+    Size text is 12 - 14 - 16 - 18
+*/
+    ssd1306_clear_screen(0x00);
+    ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
+    ssd1306_display_string(62, 2, "Conek", 16, 1);
+    ssd1306_display_string(y, x, (uint8_t *)TextSend, sizeText, 1);
+    ssd1306_refresh_gram();  
+}
 uint8_t getKey(void) {
   HAL_GPIO_WritePin(Col1_GPIO_Port, Col1_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(Col2_GPIO_Port, Col2_Pin, GPIO_PIN_RESET);
@@ -105,248 +332,6 @@ uint8_t getKey(void) {
   }
   
   return KEYPAD_NO_PRESSED;  
-}
-
-int main (void)
-{
-    uint8_t count = 0;
-    HAL_Init();
-    SystemClock_Config();
-    MX_GPIO_Init();
-    MX_CRC_Init();
-    MX_I2C1_Init();
-    MX_SPI1_Init();
-    MX_USART1_UART_Init();
-    WakeUp_CR95HF();
-    DWT_Delay_Init();
-    OLED_init();
-    ssd1306_clear_screen(0x00);
-    HAL_Delay(50);
-    ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-    HAL_Delay(50);
-    ssd1306_display_string(50, 8, "Conek", 16, 1);
-    ssd1306_refresh_gram();
-    HAL_Delay(10000);
-    ssd1306_display_string(40, 23, "Connecting", 12, 1);
-    HAL_Delay(50);
-    //ssd1306_refresh_gram();
-    ssd1306_display_string(55, 35, ".", 16, 1);
-    HAL_Delay(50);
-    ssd1306_refresh_gram();
-    int a = 0;
-//    if(Sim_sendCommand("ATE1","OK",10000)){
-//    }
-    //HAL_Delay(10);
-    if(Sim_sendCommand_IMEI("AT+CGSN")){
-      HAL_Delay(10);
-    }
-
-    while(a < 1)
-    {
-      if(Sim_sendCommand("AT","OK",10000))
-      {
-        ssd1306_display_string(60, 35, ".", 16, 1);
-        ssd1306_refresh_gram();
-        HAL_Delay(10);
-        if(Sim_sendCommand("AT+SAPBR=3,1,\"Contype\",\"GPRS\"","OK",10000))
-        {
-          ssd1306_display_string(65, 35, ".", 16, 1);
-          ssd1306_refresh_gram();
-          HAL_Delay(10);        
-          if(Sim_sendCommand("AT+SAPBR=3,1,\"APN\",\"e-connect\"","OK",10000))		
-          {
-            ssd1306_display_string(70, 35, ".", 16, 1);
-            ssd1306_refresh_gram();
-            HAL_Delay(10);           
-            if(Sim_sendCommand("AT+SAPBR=1,1","OK",10000))
-            {
-              ssd1306_display_string(75, 35, ".", 16, 1);
-              ssd1306_refresh_gram();
-              HAL_Delay(10);             
-              if(Sim_sendCommand("AT+HTTPINIT","OK",10000))
-              {
-                ssd1306_display_string(80, 35, ".", 16, 1);
-                ssd1306_refresh_gram();
-                HAL_Delay(10);                          
-                a = 1;
-              }
-            }
-          }
-        }
-      }  
-    }    
-    for(uint8_t i = 0; i < 15; i++){
-      IMEI_SIM_REAL[i] = IMEI_SIM[i + 11] - 0x30;
-    }
-    ssd1306_clear_screen(0x00);
-    ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-    ssd1306_display_string(62, 2, "Conek", 16, 1);
-    ssd1306_display_string(50, 25, "Welcome", 16, 1);
-    //ssd1306_display_string(45, 35, (uint8_t *)IMEI_SIM_REAL, 12, 1);
-    ssd1306_refresh_gram();
-    HAL_Delay(1000);
-    permissReadTag=0;
-    uint8_t key;
-        
-    while (1)
-    {  
-          char url[100] = "AT+HTTPPARA=\"URL\",\"http://testcodeesp8266.000webhostapp.com/receiver.php?UID=";
-          switch(permissReadTag)
-          {
-          case 0:
-              if ( (ping_module() == PING_OK) && (select_tag_type (TYPE_5) == PROTOCOL_OK) && (getDeviceID (idTag) == SEND_RECV_OK))
-              {
-                idTag[7] = 0x00;
-                if (encode8byte_little_edian (idTag, idTagBCD) == 0)
-                {
-                  for (count = 0; count < ID_TAG_SIZE * 2; count++)
-                  {
-                    idTagBCD[count] += 0x30;
-                  }
-                } 
-                __HAL_SPI_DISABLE(&spi_to_nfcm1833tinz); 
-                ssd1306_clear_screen(0x00);
-                ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-                ssd1306_display_string(62, 2, "Conek", 16, 1);
-                ssd1306_display_string(45, 17, "Nhap Tien: " , 12, 1);
-                ssd1306_refresh_gram();
-                permissReadTag = 1;  
-                HAL_Delay(500);
-              }            
-              break;
-            case 1:
-              key = getKey();
-              if (key != KEYPAD_NO_PRESSED) { 
-                if (key != 35 && key != 42) {
-                  viTriTien++;
-                  So_Tien_Pay[viTriTien - 1] = 0x30 + key;
-                  ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                  ssd1306_refresh_gram();
-                }else if (key == 42) {
-                  So_Tien_Pay[viTriTien - 1] = 0;
-                  if(viTriTien > 0){
-                    viTriTien--;
-                  }else{
-                    viTriTien = 0;
-                  }
-                  ssd1306_clear_screen(0x00);
-                  ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-                  ssd1306_display_string(62, 2, "Conek", 16, 1);
-                  ssd1306_display_string(45, 17, "Nhap Tien: " , 12, 1);            
-                  ssd1306_display_string(45, 37, So_Tien_Pay, 12, 1);
-                  ssd1306_refresh_gram();
-                }else if (key == 35) {
-                  permissReadTag = 2;
-                  HAL_Delay(50);
-                  ssd1306_clear_screen(0x00);
-                  HAL_Delay(50);
-                  ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-                  ssd1306_display_string(62, 2, "Conek", 16, 1);
-                  ssd1306_display_string(45, 17, "Nhap Bill: " , 12, 1);            
-                  ssd1306_refresh_gram();                  
-                }
-              }
-              HAL_Delay(120);                       
-              break;
-          case 2:
-              key = getKey();
-              if (key != KEYPAD_NO_PRESSED) { 
-                if (key != 35 && key != 42) {
-                  viTriBill++;
-                  So_Bill[viTriBill - 1] = 0x30 + key;
-                  ssd1306_display_string(45, 37, So_Bill, 12, 1);
-                  ssd1306_refresh_gram();
-                }else if (key == 42) {
-                  So_Bill[viTriBill - 1] = 0;
-                  if(viTriBill > 0){
-                    viTriBill--;
-                  }else{
-                    viTriBill = 0;
-                  }
-                  ssd1306_clear_screen(0x00);
-                  ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-                  ssd1306_display_string(62, 2, "Conek", 16, 1);
-                  ssd1306_display_string(45, 17, "Nhap Bill: " , 12, 1);            
-                  ssd1306_display_string(45, 37, So_Bill, 12, 1);
-                  ssd1306_refresh_gram();
-                }else if (key == 35) {
-                  permissReadTag = 3;
-                  ssd1306_clear_screen(0x00);
-                  ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-                  ssd1306_display_string(62, 2, "Conek", 16, 1);
-                  ssd1306_display_string(45, 25, "Sending...", 16, 1);
-                  ssd1306_refresh_gram();                  
-                }
-              }
-              HAL_Delay(120);              
-              break;
-          default: 
-              display((char *)url);
-              for(uint8_t abc = 0; abc < 16; abc++){
-                HAL_UART_Transmit(&huart1,&idTagBCD[abc],1,1000);
-              }
-              display("&bill=");
-              display((char*)So_Bill);
-              display("&money=");
-              display((char *)So_Tien_Pay);
-              display("&imei=");
-              display(IMEI_SIM_REAL);
-              permissReadTag = 0;
-                if(Sim_sendCommand("\"","OK",10000))
-                {
-                  ssd1306_display_string(55, 40, ".", 16, 1);
-                  ssd1306_refresh_gram();
-                  HAL_Delay(10);
-                  if(Sim_sendCommand("AT+HTTPPARA=\"CID\",1","OK",10000))
-                  {
-                    ssd1306_display_string(60, 40, ".", 16, 1);
-                    ssd1306_refresh_gram();
-                    HAL_Delay(10);
-                    if(Sim_sendCommand("AT+HTTPACTION=0","OK",10000))
-                    {
-                      ssd1306_display_string(65, 40, ".", 16, 1);
-                      ssd1306_refresh_gram();
-                      if(Sim_Response("200",10000))
-                      {     
-                        ssd1306_clear_screen(0x00);
-                        ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-                        ssd1306_display_string(62, 2, "Conek", 16, 1);
-                        ssd1306_display_string(50, 25, "Success", 16, 1);
-                        ssd1306_refresh_gram();                
-                      }
-                      else
-                      {                    
-                        ssd1306_clear_screen(0x00);
-                        ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-                        ssd1306_display_string(62, 2, "Conek", 16, 1);
-                        ssd1306_display_string(50, 25, "Sorry, Fail", 16, 1);
-                        ssd1306_refresh_gram();                
-                      }
-                    }
-                    else
-                    {
-                        ssd1306_clear_screen(0x00);
-                        ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-                        ssd1306_display_string(62, 2, "Conek", 16, 1);
-                        ssd1306_display_string(50, 25, "Sorry, Fail", 16, 1);
-                        ssd1306_refresh_gram();                
-                    }
-                  }
-                }
-              HAL_Delay(500);
-              ssd1306_clear_screen(0x00);
-              ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
-              ssd1306_display_string(62, 2, "Conek", 16, 1);
-              ssd1306_display_string(50, 25, "Welcome", 16, 1);
-              ssd1306_refresh_gram();               
-              deleteBuffer((char *)So_Bill);
-              deleteBuffer((char *)So_Tien_Pay);
-              viTriTien = 0;
-              viTriBill = 0;
-              break;
-          }
-    }
- 
 }
 void display(char* data)																								
 {
@@ -404,6 +389,7 @@ int8_t Sim_sendCommand(char*command ,char*response,uint32_t timeout)
     }
   }
   while(answer == 0); 
+  
   return answer;
 }
 
