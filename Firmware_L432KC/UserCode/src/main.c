@@ -13,7 +13,9 @@ I2C_HandleTypeDef hi2c1;
 #endif
 #define KEYPAD_NO_PRESSED			0xFF
 UART_HandleTypeDef huart1;
+UART_HandleTypeDef huart2;
 static void MX_USART1_UART_Init(void);
+static void MX_USART2_UART_Init(void);
 static void MX_I2C1_Init(void);
 volatile uint8_t customerID1[ID_TAG_SIZE + 1];
 volatile uint8_t customerID2[ID_TAG_SIZE + 1];
@@ -32,6 +34,7 @@ static void MX_CRC_Init (void);
     static void MX_SPI1_Init (void);
 #endif 
 void display(char* data);
+void display2(char* data);
 void deleteBuffer(char* buf);
 uint8_t dataReceive = 0;
 char Sim_response[500] = {0};
@@ -50,7 +53,7 @@ uint8_t viTriBill = 0;
 uint8_t getKey(void);
 void DisplaySendText(uint8_t x, uint8_t y, char * TextSend, uint8_t sizeText);
 uint8_t KhoiDongSim();
-
+int8_t Sim_sendCommandWake(char*command,uint32_t timeout);
 #define Col1_GPIO_Port          GPIOB
 #define Col1_Pin                GPIO_PIN_3
 #define Col2_GPIO_Port          GPIOA
@@ -68,15 +71,16 @@ int main (void)
     MX_I2C1_Init();
     MX_SPI1_Init();
     MX_USART1_UART_Init();
+    MX_USART2_UART_Init();
     WakeUp_CR95HF();
     DWT_Delay_Init();
     OLED_init();
-    
+    HAL_GPIO_WritePin (GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
     ssd1306_clear_screen(0x00);
     ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
     ssd1306_display_string(50, 8, "Conek", 16, 1);
     ssd1306_refresh_gram();
-    
+    display2("Hello");
     HAL_Delay(8000);
     ssd1306_display_string(40, 23, "Connecting", 12, 1);
     ssd1306_display_string(55, 35, ".", 16, 1);
@@ -176,35 +180,43 @@ int main (void)
           default:
             while(countSend < 5)
             {
-              if(Sim_sendCommand("AT+SAPBR=1,1","ERROR",10000)){
-              
-              }else{
-                
-              }
-              char url[100] = "AT+HTTPPARA=\"URL\",\"http://testcodeesp8266.000webhostapp.com/receiver.php?UID=";
-              countSend++;
-              display((char *)url);
-              for(uint8_t abc = 0; abc < 16; abc++){
-                HAL_UART_Transmit(&huart1,&idTagBCD[abc],1,1000);
-              }
-              display("&bill=");
-              display((char*)So_Bill);
-              display("&money=");
-              display((char *)So_Tien_Pay);
-              display("&imei=");
-              display(IMEI_SIM_REAL);  
-              if(Sim_sendCommand("\"","OK",10000)){
+              if(Sim_sendCommandWake("AT+SAPBR=1,1",10000) != 0){
                 ssd1306_display_string(55, 40, ".", 16, 1);
-                ssd1306_refresh_gram();
-                HAL_Delay(10);
-                if(Sim_sendCommand("AT+HTTPACTION=0","OK",10000)){
-                  if(Sim_Response("200",10000)){
-                    DisplaySendText(25,50,"Success",16);
-                    countSend = 0;
-                    break;
-                  }
-                }
+                ssd1306_refresh_gram();  
+                display2("an ");
               }
+                countSend++;
+                char url[100] = "AT+HTTPPARA=\"URL\",\"http://testcodeesp8266.000webhostapp.com/receiver.php?UID=";
+                HAL_Delay(10);                
+                while(HAL_UART_Receive(&huart1, (uint8_t *)Sim_Rxdata, 1, 1000) == HAL_OK){;}
+                display((char *)url);
+                for(uint8_t abc = 0; abc < 16; abc++){
+                  HAL_UART_Transmit(&huart1,&idTagBCD[abc],1,1000);
+                }
+                display("&bill=");
+                display((char*)So_Bill);
+                display("&money=");
+                display((char *)So_Tien_Pay);
+                display("&imei=");
+                display(IMEI_SIM_REAL);
+                if(Sim_sendCommand("\"","OK",10000)){
+                  ssd1306_display_string(60, 40, ".", 16, 1);
+                  ssd1306_refresh_gram();
+                  HAL_Delay(10);
+                  if(Sim_sendCommand("AT+HTTPACTION=0","OK",10000)){
+                    if(Sim_Response("200",10000)){
+                      DisplaySendText(25,50,"Success",16);
+                      countSend = 0;
+                      if(Sim_sendCommand("AT+HTTPREAD","OK",10000)){
+                      
+                      }
+                      break;
+                    }
+                  }
+                }              
+              //}else{
+//                HAL_Delay(1000);
+//              }
             }
             HAL_Delay(500);
             if(countSend > 0){
@@ -288,7 +300,7 @@ uint8_t getKey(void) {
   HAL_GPIO_WritePin(Col2_GPIO_Port, Col2_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(Col3_GPIO_Port, Col3_Pin, GPIO_PIN_RESET);
 
-  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_3)==1){
+  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_1)==1){
     return 1;
   }
   if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)==1){
@@ -303,7 +315,7 @@ uint8_t getKey(void) {
   HAL_GPIO_WritePin(Col1_GPIO_Port, Col1_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(Col2_GPIO_Port, Col2_Pin, GPIO_PIN_SET);
   HAL_GPIO_WritePin(Col3_GPIO_Port, Col3_Pin, GPIO_PIN_RESET);
-  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_3)==1){
+  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_1)==1){
     return 2;
   }
   if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)==1){
@@ -318,7 +330,7 @@ uint8_t getKey(void) {
   HAL_GPIO_WritePin(Col1_GPIO_Port, Col1_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(Col2_GPIO_Port, Col2_Pin, GPIO_PIN_RESET);
   HAL_GPIO_WritePin(Col3_GPIO_Port, Col3_Pin, GPIO_PIN_SET);
-  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_3)==1){
+  if(HAL_GPIO_ReadPin(GPIOA,GPIO_PIN_1)==1){
     return 3;
   }
   if(HAL_GPIO_ReadPin(GPIOB,GPIO_PIN_1)==1){
@@ -336,6 +348,10 @@ uint8_t getKey(void) {
 void display(char* data)																								
 {
 	HAL_UART_Transmit(&huart1,(uint8_t *)data,(uint16_t)strlen(data),1000);
+}
+void display2(char* data)																								
+{
+	HAL_UART_Transmit(&huart2,(uint8_t *)data,(uint16_t)strlen(data),1000);
 }
 void deleteBuffer(char* buf)
 {
@@ -389,10 +405,59 @@ int8_t Sim_sendCommand(char*command ,char*response,uint32_t timeout)
     }
   }
   while(answer == 0); 
-  
+  display2(Sim_response);
   return answer;
 }
-
+int8_t Sim_sendCommandWake(char*command,uint32_t timeout)
+{
+  uint8_t answer = 0, count  = 0;
+  deleteBuffer(Sim_response);
+  uint32_t time = HAL_GetTick();
+  uint32_t time1 = HAL_GetTick();
+  HAL_UART_Transmit(&huart1, (uint8_t *)command, (uint16_t)strlen(command), 1000);
+  HAL_UART_Transmit(&huart1,(uint8_t *)"\r\n",(uint16_t)strlen("\r\n"),1000);
+  do
+  {
+    while(HAL_UART_Receive(&huart1, (uint8_t *)Sim_Rxdata, 1, 1000) != HAL_OK)
+    {
+      if(HAL_GetTick() - time > timeout) 
+      {
+        answer = 1;
+        break;
+      }
+    }
+    time = HAL_GetTick();
+    Sim_response[count++] = Sim_Rxdata[0];
+    while((HAL_GetTick() - time < timeout))
+    {
+      if(HAL_UART_Receive(&huart1, (uint8_t *)Sim_Rxdata, 1, 1000) == HAL_OK)
+      {
+        Sim_response[count++] = Sim_Rxdata[0];
+        time1 = HAL_GetTick();
+      }
+      else
+      {
+        if(HAL_GetTick() - time1 > 100)
+        {
+          if(strstr(Sim_response,"OK") != NULL) 
+          {
+            answer = 1;
+          }else if(strstr(Sim_response,"ERROR") != NULL){
+            answer = 2;
+          } 
+          else
+          {
+            answer = 0;
+          }
+          break;
+        }
+      }
+    }
+  }
+  while(answer == 0); 
+  display2(Sim_response);
+  return answer;
+}
 int8_t Sim_Response(char*response,uint32_t timeout)
 {
   uint8_t answer = 0, count  = 0;
@@ -435,7 +500,7 @@ int8_t Sim_Response(char*response,uint32_t timeout)
     }
   }
   while(answer == 0);
-  //display(Sim_response);
+  display2(Sim_response);
   return answer;
 }
 int8_t Sim_sendCommand_IMEI(char*command)
@@ -455,6 +520,7 @@ int8_t Sim_sendCommand_IMEI(char*command)
   }
   while(count <= 30);
   while(HAL_UART_Receive(&huart1, (uint8_t *)Sim_Rxdata1, 1, 2000) == HAL_OK){}
+  display2(IMEI_SIM);
   //ssd1306_display_string(40, 35,(uint8_t *)IMEI_SIM, 12, 1);
   //ssd1306_refresh_gram();    
   return answer;
@@ -634,7 +700,7 @@ static void MX_GPIO_Init (void)
     __HAL_RCC_GPIOB_CLK_ENABLE();
     __HAL_RCC_GPIOH_CLK_ENABLE();
     
-    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_3|GPIO_PIN_8;
+    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_1|GPIO_PIN_8;
     GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
     GPIO_InitStruct.Pull = GPIO_PULLDOWN;
     HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);    
@@ -645,7 +711,7 @@ static void MX_GPIO_Init (void)
     
     /*Configure GPIO pins : PB0 PB1 PB3 PB4 
                              PB5 */
-    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_3;
+    GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_3|GPIO_PIN_5;
     GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
     GPIO_InitStruct.Pull = GPIO_PULLUP;
     HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
@@ -679,7 +745,30 @@ static void MX_USART1_UART_Init(void)
     Error_Handler();
   }
 }
+static void MX_USART2_UART_Init(void)
+{
+  /* USER CODE BEGIN USART1_Init 0 */
 
+  /* USER CODE END USART1_Init 0 */
+
+  /* USER CODE BEGIN USART1_Init 1 */
+
+  /* USER CODE END USART1_Init 1 */
+  huart2.Instance = USART2;
+  huart2.Init.BaudRate = 9600;
+  huart2.Init.WordLength = UART_WORDLENGTH_8B;
+  huart2.Init.StopBits = UART_STOPBITS_1;
+  huart2.Init.Parity = UART_PARITY_NONE;
+  huart2.Init.Mode = UART_MODE_TX_RX;
+  huart2.Init.HwFlowCtl = UART_HWCONTROL_NONE;
+  huart2.Init.OverSampling = UART_OVERSAMPLING_16;
+  huart2.Init.OneBitSampling = UART_ONE_BIT_SAMPLE_DISABLE;
+  huart2.AdvancedInit.AdvFeatureInit = UART_ADVFEATURE_NO_INIT;
+  if (HAL_UART_Init(&huart2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+}
 void Error_Handler (void)
 {
     /* USER CODE BEGIN Error_Handler_Debug */
