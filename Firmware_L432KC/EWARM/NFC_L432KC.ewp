@@ -365,6 +365,7 @@
                     <state>$PROJ_DIR$\..\..\..\..\STM32Cube\Repository\STM32Cube_FW_L4_V1.14.0\Drivers\CMSIS\Device\ST\STM32L4xx\Include</state>
                     <state>$PROJ_DIR$\..\..\..\..\STM32Cube\Repository\STM32Cube_FW_L4_V1.14.0\Drivers\CMSIS\Include</state>
                     <state>$PROJ_DIR$\..\DucaLib\inc</state>
+                    <state>$PROJ_DIR$\..\STM32Cube_FW_L4_V1.14.0\Drivers\STM32L4xx_HAL_Driver\Inc</state>
                 </option>
                 <option>
                     <name>CCStdIncCheck</name>

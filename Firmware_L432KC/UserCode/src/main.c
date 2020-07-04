@@ -8,6 +8,7 @@
 
 CRC_HandleTypeDef hcrc;
 I2C_HandleTypeDef hi2c1;
+
 #ifdef USE_TINZ
     SPI_HandleTypeDef spi_to_nfcm1833tinz;
 #endif
@@ -178,8 +179,10 @@ int main (void)
               HAL_Delay(100);              
               break;
           default:
+            
             while(countSend < 5)
             {
+              char url[100] = "AT+HTTPPARA=\"URL\",\"http://testcodeesp8266.000webhostapp.com/receiver.php?UID=";
               if(countSend > 2){
                 HAL_UART_Transmit(&huart1,(uint8_t *)"AT+SAPBR=1,1",(uint16_t)strlen("AT+SAPBR=1,1"),1000);
                 HAL_UART_Transmit(&huart1,(uint8_t *)"\r\n",(uint16_t)strlen("\r\n"),1000);
@@ -189,9 +192,39 @@ int main (void)
                     abc++;
                   }
                 }
-              }
-                countSend++;
-                char url[100] = "AT+HTTPPARA=\"URL\",\"http://testcodeesp8266.000webhostapp.com/receiver.php?UID=";
+                HAL_Delay(10);                
+                //while(HAL_UART_Receive(&huart1, (uint8_t *)Sim_Rxdata, 1, 1000) == HAL_OK){;}
+                display((char *)url);
+                HAL_Delay(1);       
+                for(uint8_t abc = 0; abc < 16; abc++){
+                  HAL_UART_Transmit(&huart1,&idTagBCD[abc],1,1000);
+                  HAL_Delay(1);       
+                }
+                display("&bill=");
+                HAL_Delay(1);
+                display((char*)So_Bill);
+                HAL_Delay(1);
+                display("&money=");
+                HAL_Delay(1);
+                display((char *)So_Tien_Pay);
+                HAL_Delay(1);
+                display("&imei=");
+                HAL_Delay(1);
+                display(IMEI_SIM_REAL);
+                HAL_Delay(1);    
+                if(Sim_sendCommand("\"","OK",3000)){                
+                
+                }
+                if(Sim_sendCommand("AT+HTTPACTION=0","OK",5000)){
+                  if(Sim_Response("200",5000)){
+                    DisplaySendText(25,50,"Success",16);
+                    countSend = 0;
+                    if(Sim_sendCommand("AT+HTTPREAD","OK",5000)){  
+                    }
+                    break;
+                  }
+                }                                                    
+              }else{
                 HAL_Delay(10);                
                 //while(HAL_UART_Receive(&huart1, (uint8_t *)Sim_Rxdata, 1, 1000) == HAL_OK){;}
                 display((char *)url);
@@ -216,21 +249,18 @@ int main (void)
                   ssd1306_display_string(60, 40, ".", 16, 1);
                   ssd1306_refresh_gram();
                   HAL_Delay(10);
-                }
-                if(Sim_sendCommand("AT+HTTPACTION=0","OK",5000)){
-                  if(Sim_Response("200",5000)){
-                    DisplaySendText(25,50,"Success",16);
-                    countSend = 0;
-                    if(Sim_sendCommand("AT+HTTPREAD","OK",5000)){  
+                  if(Sim_sendCommand("AT+HTTPACTION=0","OK",5000)){
+                    if(Sim_Response("200",5000)){
+                      DisplaySendText(25,50,"Success",16);
+                      countSend = 0;
+                      if(Sim_sendCommand("AT+HTTPREAD","OK",5000)){  
+                      }
+                      break;
                     }
-                    break;
-                  }
-                }                
-                
-                
-              //}else{
-//                HAL_Delay(1000);
-//              }
+                  }                                    
+                }
+              }
+              countSend++;
             }
             HAL_Delay(500);
             if(countSend > 0){

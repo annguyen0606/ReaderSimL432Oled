@@ -38,6 +38,8 @@ E:\Firmware\CodeTestL432KC\ReaderSimL432Oled\Firmware_L432KC\EWARM\..\..\..\..\S
 -I
 E:\Firmware\CodeTestL432KC\ReaderSimL432Oled\Firmware_L432KC\EWARM\..\DucaLib\inc
 -I
+E:\Firmware\CodeTestL432KC\ReaderSimL432Oled\Firmware_L432KC\EWARM\..\STM32Cube_FW_L4_V1.14.0\Drivers\STM32L4xx_HAL_Driver\Inc
+-I
 C:\Program Files (x86)\IAR Systems\Embedded Workbench 8.3\arm\inc
 -I
 C:\Program Files (x86)\IAR Systems\Embedded Workbench 8.3\arm\inc\c
@@ -69,6 +71,8 @@ E:\Firmware\STM32Cube\Repository\STM32Cube_FW_L4_V1.14.0\Drivers\CMSIS\Device\ST
 E:\Firmware\STM32Cube\Repository\STM32Cube_FW_L4_V1.14.0\Drivers\CMSIS\Include
 -I
 E:\Firmware\CodeTestL432KC\ReaderSimL432Oled\Firmware_L432KC\DucaLib\inc
+-I
+E:\Firmware\CodeTestL432KC\ReaderSimL432Oled\Firmware_L432KC\STM32Cube_FW_L4_V1.14.0\Drivers\STM32L4xx_HAL_Driver\Inc
 -D__CHAR_BITS__=8
 -D__CHAR_MAX__=0xff
 -D__CHAR_MIN__=0
