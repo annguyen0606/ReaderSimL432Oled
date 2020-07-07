@@ -375,4 +375,18 @@ void WakeUp_TinZ (void)
     HAL_Delay (50);
     HAL_GPIO_WritePin (GPIOA, GPIO_PIN_4, GPIO_PIN_SET);
     HAL_Delay (10);
+  
+//    GPIO_InitTypeDef GPIO_InitStruct = {0};
+//    HAL_GPIO_WritePin (GPIOA, GPIO_PIN_2, GPIO_PIN_RESET);
+//    GPIO_InitStruct.Pin = GPIO_PIN_2;
+//    GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+//    GPIO_InitStruct.Pull = GPIO_NOPULL;
+//    GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
+//    HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
+//    HAL_GPIO_WritePin (GPIOA, GPIO_PIN_2, GPIO_PIN_SET);
+//    HAL_Delay (150);
+//    HAL_GPIO_WritePin (GPIOA, GPIO_PIN_2, GPIO_PIN_RESET);
+//    HAL_Delay (50);
+//    HAL_GPIO_WritePin (GPIOA, GPIO_PIN_2, GPIO_PIN_SET);
+//    HAL_Delay (10);
 }

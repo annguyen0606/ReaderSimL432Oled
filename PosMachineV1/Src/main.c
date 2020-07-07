@@ -85,7 +85,7 @@ int main (void)
     WakeUp_CR95HF();
     DWT_Delay_Init();
     OLED_init();
-    HAL_GPIO_WritePin (GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
+    //HAL_GPIO_WritePin (GPIOB, GPIO_PIN_5, GPIO_PIN_RESET);
     ssd1306_clear_screen(0x00);
     ssd1306_draw_bitmap(0, 12, &ConekLogo[0], 40, 40);
     ssd1306_display_string(50, 8, "Conek", 16, 1);
@@ -119,7 +119,7 @@ int main (void)
           Minute = sTime.Minutes;
           Hours = sTime.Hours;
           
-          if((Minute == 25 && Second <= 3) || (Minute == 55 && Second <= 3))
+          if((Minute == 0 && Second <= 4) || (Minute == 20 && Second <= 4) || (Minute == 40 && Second <= 4))
           {
             display2("Xin Chao ANC");
             display2("\r\n");
@@ -140,8 +140,10 @@ int main (void)
                   }
                 } 
                 __HAL_SPI_DISABLE(&spi_to_nfcm1833tinz); 
-                DisplaySendText(17,55,"Nhap Tien",12);
-                permissReadTag = 1;  
+                //display(idTagBCD);
+                DisplaySendText(25,45,"Sending...",16);
+                //DisplaySendText(17,55,"Nhap Tien",12);
+                permissReadTag = 3;  
                 HAL_Delay(500);
               }            
               break;
@@ -198,7 +200,9 @@ int main (void)
           case 3:
             while(countSend < 5)
             {
-              char url[100] = "AT+HTTPPARA=\"URL\",\"http://testcodeesp8266.000webhostapp.com/receiver.php?UID=";
+              //char url[100] = "AT+HTTPPARA=\"URL\",\"http://testcodeesp8266.000webhostapp.com/receiver.php?UID=";
+              //char url[100] = "AT+HTTPPARA=\"URL\",\"http://studytogetheranc.somee.com/conek/dulieudiemdanh?uidTag=";
+              char url[100] = "AT+HTTPPARA=\"URL\",\"http://nfcapi.conek.net/conek/dulieudiemdanh?uidTag=";
               if(countSend > 2){
                                                                
               }else{
@@ -210,24 +214,24 @@ int main (void)
                   HAL_UART_Transmit(&huart1,&idTagBCD[abc],1,1000);
                   HAL_Delay(1);       
                 }
-                display("&bill=");
-                HAL_Delay(1);
-                display((char*)So_Bill);
-                HAL_Delay(1);
-                display("&money=");
-                HAL_Delay(1);
-                display((char *)So_Tien_Pay);
-                HAL_Delay(1);
-                display("&imei=");
-                HAL_Delay(1);
-                display(IMEI_SIM_REAL);
-                HAL_Delay(1);
-                if(Sim_sendCommand("\"","OK",5000)){
+//                display("&bill=");
+//                HAL_Delay(1);
+//                display((char*)So_Bill);
+//                HAL_Delay(1);
+//                display("&money=");
+//                HAL_Delay(1);
+//                display((char *)So_Tien_Pay);
+//                HAL_Delay(1);
+//                display("&imei=");
+//                HAL_Delay(1);
+//                display(IMEI_SIM_REAL);
+//                HAL_Delay(1);
+                if(Sim_sendCommand("\"","OK",10000)){
                   ssd1306_display_string(60, 40, ".", 16, 1);
                   ssd1306_refresh_gram();
                   HAL_Delay(10);
-                  if(Sim_sendCommand("AT+HTTPACTION=0","OK",5000)){
-                    if(Sim_Response("200",5000)){
+                  if(Sim_sendCommand("AT+HTTPACTION=0","OK",10000)){
+                    if(Sim_Response("200",10000)){
                       DisplaySendText(25,50,"Success",16);
                       countSend = 0;
 //                      if(Sim_sendCommand("AT+HTTPREAD","OK",5000)){  
@@ -253,8 +257,8 @@ int main (void)
             break;
           default:
             char url[100] = "AT+HTTPPARA=\"URL\",\"http://testcodeesp8266.000webhostapp.com/receiver.php?UID=\"";
-            if(Sim_sendCommand(url,"OK",5000)){
-              if(Sim_sendCommand("AT+HTTPACTION=0","OK",5000)){
+            if(Sim_sendCommand(url,"OK",10000)){
+              if(Sim_sendCommand("AT+HTTPACTION=0","OK",10000)){
                 if(Sim_Response("200",5000)){
                   display2("Resend OK");
                 }
